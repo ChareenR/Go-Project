@@ -35,8 +35,8 @@ winner_text = ""
 def get_board_pos(mouse_pos):
     x, y = mouse_pos
     if Margin <= x < window_size - Margin and Margin <= y < window_size - Margin:
-        col = (x - Margin) / Cell_Size
-        row = (y - Margin) / Cell_Size
+        col = round((x - Margin) / Cell_Size)
+        row = round((y - Margin) / Cell_Size)
         return row, col
     return None, None
 
@@ -50,6 +50,7 @@ def get_group(board, row, col,):
         r,c = stack.pop()
         if (r,c) in visted:
             continue
+        visted.add((r,c))
         for dr, dc in [(1,0),(-1,0),(0,1),(0,-1)]:
             nr, nc = r + dr, c + dc
             if 0 <= nr < Board_size and 0 <= nc < Board_size:
@@ -69,7 +70,7 @@ def count_liberty(board, group):
 
 def make_move(board, row, col, player, previous_board):
     if board[row][col] != EMPTY:
-        return 0, False, previous_board
+        return board, 0, False, previous_board
     new_board = [row_copy[:] for row_copy in board]
     new_board[row][col] = player
     captured = 0
@@ -100,9 +101,9 @@ def compute_score(board, black_captures, white_captures):
     for r in range(Board_size):
         for c in range(Board_size):
             if board[r][c] == BLACK:
-                BLACK_SCORE += 1
+                black_score += 1
             elif board[r][c] == WHITE:
-                WHITE_SCORE += 1
+                white_score += 1
     for r in range(Board_size):
         for c in range(Board_size):
             if board[r][c] == EMPTY and not visited[r][c]:
@@ -155,7 +156,55 @@ def draw_board():
                 pygame.draw.circle(screen, black_stone, center, Cell_Size//2 - 2)
             elif board[row][col] == WHITE:
                 pygame.draw.circle(screen, white_stone, center, Cell_Size//2 - 2)
-                pygame.draw.circle(screen, line_color, center, Cell_Size//2 - 2, 1)
+
+                pygame.draw.circle(screen, black_stone, center, Cell_Size//2 - 2, 1)
+
     if game_over:
-        text_surface = font.render(winner_text, True, text_color)
-        
+        text = font.render(winner_text, True, text_color)
+        screen.blit(text, (window_size//2 - 100, window_size//2 ))
+    else:
+        if current_player == BLACK:
+            turn_text ="Black's Turn"
+        else:
+            turn_text ="White's Turn"
+        text = font.render(turn_text, True, text_color)
+        screen.blit(text, (10, 10))
+
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            running = False
+        elif event.type == MOUSEBUTTONDOWN and not game_over:
+            mouse_pos = pygame.mouse.get_pos()
+            row, col = get_board_pos(mouse_pos)
+            if row is not None and col is not None:
+                new_board, captured, valid, previous_board = make_move(board, row, col, current_player, previous_board)
+                if valid:
+                    board = new_board
+                    if captured > 0:
+                        if current_player == BLACK:
+                            black_captures += captured
+                        else:
+                            white_captures += captured
+                    passes = 0
+                    current_player = WHITE if current_player == BLACK else BLACK
+                else:
+                    print("Invalid move")
+        elif event.type == KEYDOWN and event.key == K_SPACE and not game_over:
+            passes += 1
+            if passes >= 2:
+                black_score, white_score = compute_score(board, black_captures, white_captures)
+                if black_score > white_score:
+                    winner_text = f"Black wins! {black_score} to {white_score}"
+                elif white_score > black_score:
+                    winner_text = f"White wins! {white_score} to {black_score}"
+                else:
+                    winner_text = "It's a tie!"
+                game_over = True
+            else:
+                current_player = WHITE if current_player == BLACK else BLACK
+
+    draw_board()
+    pygame.display.flip()
+    clock.tick(10)
