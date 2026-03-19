@@ -1,6 +1,7 @@
 import pygame, sys
 from pygame.locals import *
 import numpy as np
+from random import randint
 
 EMPTY = 0
 BLACK = 1
@@ -9,17 +10,20 @@ WHITE = 2
 size = 600
 Board_size = 9
 Cell_Size = 50
-Margin = 40
+Margin = 50
 window_size = 2*Margin + Cell_Size + (Board_size-1)*Cell_Size
 background=(220, 180, 140)
 line_color=(0, 0, 0)
 black_stone = (0, 0, 0)
 white_stone = (255, 255, 255)
-text_color = (255,255,255)
+text_color = (0,0,0)
+last_move = None
+ai_plays_white = False
+
 
 pygame.init()
-screen = pygame.display.set_mode((window_size, window_size))
-pygame.display.set_caption('Go')
+screen = pygame.display.set_mode((window_size-10, window_size-10))
+pygame.display.set_caption('Go Version 1.0')
 font = pygame.font.Font(None, 36)
 clock = pygame.time.Clock()
 
@@ -30,7 +34,7 @@ passes = 0
 black_captures = 0
 white_captures = 0
 game_over = False
-winner_text = ""
+winner_text = "Nice work!"
 
 def get_board_pos(mouse_pos):
     x, y = mouse_pos
@@ -91,6 +95,10 @@ def make_move(board, row, col, player, previous_board):
         return board, 0, False, previous_board
     if previous_board is not None and new_board == previous_board:
         return board, 0, False, previous_board
+    
+    global last_move
+    last_move = (row, col)
+    
     return new_board, captured, True, board
 
 def compute_score(board, black_captures, white_captures):
@@ -131,11 +139,44 @@ def compute_score(board, black_captures, white_captures):
                     black_score += len(region)
                 elif touches_white and not touches_black:
                     white_score += len(region)
-                    
+
     return black_score, white_score
+
+
+
+def draw_ai_toggle():
+    toggle_rect = pygame.Rect(window_size - 180, 17, 170, 30)
+    pygame.draw.rect(screen, (200, 200, 200), toggle_rect)
+    label = "AI ON" if ai_plays_white else "AI Plays Black"
+    text = font.render(label, True, (0, 0, 0))
+    screen.blit(text, (window_size - 180, 15))
+    return toggle_rect
+
+
+def handle_ai_move():
+    global board, current_player, previous_board, white_captures
+    valid_moves = []
+    for r in range(Board_size):
+        for c in range(Board_size):
+            if board[r][c] == EMPTY:
+                new_board, captured, valid, _ = make_move(board, r, c, WHITE, previous_board)
+                if valid:
+                    valid_moves.append((r,c))
+    if valid_moves:
+        move = valid_moves[randint(0, len(valid_moves)-1)]
+        new_board, captured, valid, prev = make_move(board, move[0], move[1], WHITE, previous_board)
+        if valid:
+            board = new_board
+            if captured > 0:
+                white_captures += captured
+            previous_board = prev
+            current_player = BLACK
+
+
 
 def draw_board():
     screen.fill(background)
+    toggle_rect = draw_ai_toggle()
     for i in range(Board_size):
         x = Margin + i * Cell_Size
         pygame.draw.line(screen, line_color, (x, Margin), (x, Margin + (Board_size-1)* Cell_Size), 2)
@@ -164,19 +205,30 @@ def draw_board():
         screen.blit(text, (window_size//2 - 100, window_size//2 ))
     else:
         if current_player == BLACK:
-            turn_text ="Black's Turn"
+            turn_text =f"Black's Turn, score {black_captures} to {white_captures}"
         else:
-            turn_text ="White's Turn"
+            turn_text =f"White's Turn, score {black_captures} to {white_captures}"
         text = font.render(turn_text, True, text_color)
         screen.blit(text, (10, 10))
+
+    if last_move is not None:
+        lr, lc = last_move
+        center = (Margin + lc * Cell_Size, Margin + lr * Cell_Size)
+        pygame.draw.circle(screen, (0, 255, 0), center, 30,2)
+    return toggle_rect
 
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
             running = False
+
         elif event.type == MOUSEBUTTONDOWN and not game_over:
             mouse_pos = pygame.mouse.get_pos()
+            toggle_rect = draw_board()
+            if toggle_rect.collidepoint(mouse_pos):
+                ai_plays_white = not ai_plays_white
+                continue
             row, col = get_board_pos(mouse_pos)
             if row is not None and col is not None:
                 new_board, captured, valid, previous_board = make_move(board, row, col, current_player, previous_board)
@@ -191,6 +243,8 @@ while running:
                     current_player = WHITE if current_player == BLACK else BLACK
                 else:
                     print("Invalid move")
+            
+
         elif event.type == KEYDOWN and event.key == K_SPACE and not game_over:
             passes += 1
             if passes >= 2:
@@ -200,11 +254,14 @@ while running:
                 elif white_score > black_score:
                     winner_text = f"White wins! {white_score} to {black_score}"
                 else:
-                    winner_text = "It's a tie!"
+                    winner_text = "I declare this to be a draw!"
                 game_over = True
             else:
                 current_player = WHITE if current_player == BLACK else BLACK
 
     draw_board()
     pygame.display.flip()
+    if not game_over and current_player == WHITE and ai_plays_white:
+        handle_ai_move()
     clock.tick(10)
+
