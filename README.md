@@ -76,10 +76,8 @@ Quit game --> ESC
 
 
 
-Future Improvements (Ideas)
-- Add territory scoring  
-- Add 13×13 and 19×19 board sizes  
-- Add AI opponent  
+Future Improvements (Ideas)  
+- Add 13×13 and 19×19 board sizes    
 - Add undo/redo  
 - Add sound effects and animations  
 - Add online multiplayer  
