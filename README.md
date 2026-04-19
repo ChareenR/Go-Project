@@ -2,13 +2,7 @@
 
 A complete and fully playable 9×9 Go client built in Python using `pygame` and `PyTorch`. This version features a self-training neural network AI powered by Monte Carlo Tree Search (MCTS), generational self-play training, and a polished dark-themed interface.
 
----
 
-## Screenshots
-
-| Menu | In-Game |
-|------|---------|
-| ![Menu](V5_Menu.png) | ![Board](GoGUI2.png) |
 
 ---
 
